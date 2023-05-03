@@ -147,3 +147,4 @@ build
 ### Custom
 # Puppeteer TMP dir
 tmp/
+config.json

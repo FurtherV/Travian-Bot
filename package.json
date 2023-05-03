@@ -15,13 +15,15 @@
     "license": "ISC",
     "devDependencies": {
         "@types/node": "^18.16.3",
+        "@types/yargs": "^17.0.24",
         "rimraf": "^5.0.0",
         "typescript": "^5.0.4"
     },
     "dependencies": {
         "puppeteer": "^19.11.1",
         "puppeteer-extra": "^3.3.6",
+        "puppeteer-extra-plugin-adblocker": "^2.13.6",
         "puppeteer-extra-plugin-stealth": "^2.11.2",
-        "puppeteer-extra-plugin-adblocker": "^2.13.6"
+        "yargs": "^17.7.2"
     }
 }

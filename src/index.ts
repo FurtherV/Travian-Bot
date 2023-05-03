@@ -1,25 +1,71 @@
+#!/usr/bin/env node
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 import { BrowserClient } from "./BrowserClient";
+import fs from "fs";
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+interface BotConfiguration {
+    serverUrl: string;
+    username: string;
+    password: string;
+    villageId: number;
+    buildingIds: number[];
+    targetLevel: number;
+}
+
+const DEFAULT_CONFIG: BotConfiguration = {
+    serverUrl: "https://my-travian-server.com",
+    username: "Test",
+    password: "123456",
+    villageId: 123456,
+    buildingIds: [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    ],
+    targetLevel: 1,
+};
+
 async function main() {
+    const options = yargs(hideBin(process.argv))
+        .options({
+            config: {
+                description: "Path to config file",
+                type: "string",
+                default: "./config.json",
+            },
+        })
+        .help()
+        .alias("help", "h")
+        .parseSync();
+
+    let config: BotConfiguration;
+
+    try {
+        const configFile = fs.readFileSync(options.config);
+        config = JSON.parse(configFile.toString());
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error("Error reading config file:", error.message);
+        }
+        console.log("Using default configuration...");
+        config = DEFAULT_CONFIG;
+        fs.writeFileSync(options.config, JSON.stringify(config, null, 4));
+    }
+
     const client = new BrowserClient();
 
     await client.initialize({
         headless: true,
     });
 
-    await client.login(
-        "https://gos.x5.international.travian.com",
-        "FurtherV",
-        "X#Eqn.7vhBsv57F"
-    );
+    await client.login(config.serverUrl, config.username, config.password);
 
-    const villageId = 26564;
-    const buildingIds = [26, 20, 21];
-    const targetLevel = 20;
+    const villageId = config.villageId;
+    const buildingIds = config.buildingIds;
+    const targetLevel = config.targetLevel;
 
     let remainingBuildingIds = [...buildingIds].sort((a, b) => a - b);
 
@@ -98,4 +144,5 @@ async function main() {
 
     await client.exit();
 }
--main();
+
+main();
