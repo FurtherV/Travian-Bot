@@ -1,0 +1,27 @@
+{
+    "name": "travianbot",
+    "version": "1.0.0",
+    "description": "A bot for the online browser game Travian Legends.",
+    "main": "index.js",
+    "scripts": {
+        "build": "rimraf ./build && tsc",
+        "start": "npm run build && node build/index.js"
+    },
+    "keywords": [
+        "Travian",
+        "Bot"
+    ],
+    "author": "FurtherV",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/node": "^18.16.3",
+        "rimraf": "^5.0.0",
+        "typescript": "^5.0.4"
+    },
+    "dependencies": {
+        "puppeteer": "^19.11.1",
+        "puppeteer-extra": "^3.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2",
+        "puppeteer-extra-plugin-adblocker": "^2.13.6"
+    }
+}
