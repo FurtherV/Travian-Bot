@@ -57,7 +57,8 @@ async function buildingLoop(
     const client = new BrowserClient();
 
     await client.initialize({
-        headless: true,
+        headless: false,
+        userDataDir: `./tmp/${villageId}`,
     });
 
     await client.login(serverUrl, username, password);

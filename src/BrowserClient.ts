@@ -1,7 +1,7 @@
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import Adblocker from "puppeteer-extra-plugin-adblocker";
-import { Browser, Page } from "puppeteer";
+import { Browser, Page, PuppeteerLaunchOptions } from "puppeteer";
 
 export interface UpgradeBuildingResult {
     success: boolean;
@@ -21,10 +21,6 @@ export interface BuildingQueueItem {
     duration: number;
 }
 
-export interface BrowserClientOptions {
-    headless?: boolean;
-}
-
 export class BrowserClient {
     private browser: Browser | undefined;
     private page: Page | undefined;
@@ -32,15 +28,13 @@ export class BrowserClient {
 
     constructor() {}
 
-    public async initialize(options: BrowserClientOptions = {}) {
-        const { headless = false } = options;
-
+    public async initialize(options: PuppeteerLaunchOptions = {}) {
         puppeteer.use(StealthPlugin());
         puppeteer.use(Adblocker({ blockTrackers: true }));
         this.browser = await puppeteer.launch({
-            headless: headless,
-            defaultViewport: null,
-            userDataDir: "./tmp",
+            headless: options.headless || false,
+            defaultViewport: options.defaultViewport || null,
+            userDataDir: options.userDataDir || "./tmp",
             protocolTimeout: 0,
         });
 
