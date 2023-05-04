@@ -3,6 +3,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { BrowserClient } from "./BrowserClient";
 import fs from "fs";
+import { Logger } from "./Logger";
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -54,19 +55,22 @@ async function buildingLoop(
     buildingIds: number[],
     targetLevel: number
 ) {
+    const logger = new Logger(`[${villageId}]`);
     const client = new BrowserClient();
 
     await client.initialize({
-        headless: false,
+        headless: "new",
         userDataDir: `./tmp/${villageId}`,
     });
 
+    logger.info("Logging in...");
     await client.login(serverUrl, username, password);
+    logger.info("Done.");
 
     let remainingBuildingIds = [...buildingIds].sort((a, b) => a - b);
 
     // Remove building ids that have already reached or exceeded the target level
-    console.info("Removing already completed buildings from queue...");
+    logger.info("Removing already completed buildings from queue...");
     for (const buildingId of remainingBuildingIds) {
         const data = await client.getBuildingData(villageId, buildingId);
         if (data.level >= targetLevel) {
@@ -75,22 +79,22 @@ async function buildingLoop(
             );
         }
     }
-    console.info("Done");
+    logger.info("Done");
 
     // Loop over all remaining building ids and build them in order.
-    console.info("Building loop started...");
+    logger.info("Building loop started...");
     while (remainingBuildingIds.length > 0) {
         for (const buildingId of remainingBuildingIds) {
             // Check if the queue is full, if it is, wait until it is no longer full...
             let queueData = await client.getBuildingQueue(villageId);
-            console.info("queueData", queueData);
+            logger.info("queueData", queueData);
 
             while (queueData.length >= 2) {
                 await sleep(
                     (Math.min(...queueData.map((x) => x.duration)) + 2) * 1000
                 );
                 queueData = await client.getBuildingQueue(villageId);
-                console.info("queueData", queueData);
+                logger.info("queueData", queueData);
             }
 
             // Get data of the current building id.
@@ -98,7 +102,7 @@ async function buildingLoop(
                 villageId,
                 buildingId
             );
-            console.info("buildingData", buildingData);
+            logger.info("buildingData", buildingData);
 
             // Check if the level is reached, if so, skip it and remove it from the remaining building ids
             if (buildingData.level >= targetLevel) {
@@ -115,7 +119,7 @@ async function buildingLoop(
                     villageId,
                     buildingId
                 );
-                console.info("buildingData", buildingData);
+                logger.info("buildingData", buildingData);
             }
 
             // Upgrade the building and go to the next id.
@@ -133,10 +137,10 @@ async function buildingLoop(
         await sleep(5000);
     }
 
-    console.info(
+    logger.info(
         `All buildings with ids ${buildingIds} now have level >=${targetLevel}.`
     );
-    console.info("Exiting...");
+    logger.info("Exiting...");
 
     await client.exit();
 }
@@ -176,18 +180,19 @@ async function main() {
         const targetLevel = currentBuildConfig[0].targetLevel;
 
         console.info(`Starting bot for village ${villageId}.`);
-        bots.push(
-            new Promise(async () => {
-                await buildingLoop(
-                    config.serverUrl,
-                    config.username,
-                    config.password,
-                    villageId,
-                    buildingIds,
-                    targetLevel
-                );
-            })
-        );
+        const bot: Promise<void> = new Promise(async () => {
+            await buildingLoop(
+                config.serverUrl,
+                config.username,
+                config.password,
+                villageId,
+                buildingIds,
+                targetLevel
+            );
+        });
+
+        bots.push(bot);
+        await Promise.any([sleep(5000), bot]);
     }
     await Promise.all(bots);
 }
