@@ -44,7 +44,7 @@ export class BrowserClient {
     public async login(serverUrl: string, username: string, password: string) {
         this.serverUrl = serverUrl;
 
-        await this.page?.goto(`${this.serverUrl}/logout`);
+        await this.navigateTo(`${this.serverUrl}/logout`);
 
         await this.page?.type("input[name='name'].text", username);
         await this.page?.type("input[name='password'].text", password);
@@ -58,7 +58,7 @@ export class BrowserClient {
     }
 
     public async logout() {
-        await this.page?.goto(`${this.serverUrl}/dorf1.php`);
+        await this.navigateTo(`${this.serverUrl}/dorf1.php`);
         await this.page?.click("li>a[href='/logout']");
         await this.page?.waitForNavigation();
 
@@ -68,7 +68,7 @@ export class BrowserClient {
     public async switchToVillage(villageId: number) {
         //TODO: Add error checking.
 
-        await this.page?.goto(
+        await this.navigateTo(
             `${this.serverUrl}/dorf1.php?newdid=${villageId}&`
         );
     }
@@ -76,7 +76,7 @@ export class BrowserClient {
     public async switchToBuilding(buildingId: number) {
         //TODO: Add error checking.
 
-        await this.page?.goto(`${this.serverUrl}/build.php?id=${buildingId}`);
+        await this.navigateTo(`${this.serverUrl}/build.php?id=${buildingId}`);
     }
 
     public async upgradeBuilding(
@@ -129,11 +129,16 @@ export class BrowserClient {
                             "div.buildDuration>span.timer"
                         );
 
-                        const buildingNameWithLevel =
-                            divName!.textContent || "";
-                        const parts = buildingNameWithLevel.split("Level");
-                        const buildingName = parts[0].trim();
-                        const buildingLevel = parseInt(parts[1].trim());
+                        const buildingTitle = divName?.textContent;
+                        if (buildingTitle == null)
+                            throw new Error(
+                                `Could not find title of building in queue at ${villageId}.`
+                            );
+
+                        const buildingName =
+                            this.getBuildingNameFromTitle(buildingTitle);
+                        const buildingLevel =
+                            this.getBuildingLevelFromTitle(buildingTitle);
 
                         const buildDuration = parseInt(
                             timerBuildDuration!.getAttribute("value") || ""
@@ -161,16 +166,19 @@ export class BrowserClient {
         await this.switchToVillage(villageId);
         await this.switchToBuilding(buildingId);
 
-        //TODO: Add error checking.
-
-        const buildingNameWithLevel = await this.page?.$eval(
+        const buildingTitle = await this.page?.$eval(
             "div.build>h1.titleInHeader",
             (el) => el.textContent
         );
 
-        const parts = buildingNameWithLevel!.split("Level");
-        const buildingName = parts[0].trim();
-        const buildingLevel = parseInt(parts[1].trim());
+        if (buildingTitle == null) {
+            throw new Error(
+                `Could not find title of building ${buildingId} at village ${villageId}.`
+            );
+        }
+
+        const buildingName = this.getBuildingNameFromTitle(buildingTitle);
+        const buildingLevel = this.getBuildingLevelFromTitle(buildingTitle);
 
         const upgradable = !!(await this.page?.$(
             "button[type='button'].textButtonV1.green.build"
@@ -183,5 +191,31 @@ export class BrowserClient {
             level: buildingLevel,
             upgradable: upgradable,
         };
+    }
+
+    private navigateTo(url: string, maxRetries = 5) {
+        let attempts = 0;
+        while (attempts < maxRetries) {
+            try {
+                this.page?.goto(url);
+                break;
+            } catch (error) {
+                attempts++;
+                if (attempts === maxRetries) {
+                    throw new Error(`Could not navigate to URL ${url}`);
+                }
+            }
+        }
+    }
+
+    private getBuildingNameFromTitle(buildingTitle: string): string {
+        const parts = buildingTitle.split("Level");
+        return parts[0].trim();
+    }
+
+    private getBuildingLevelFromTitle(buildingTitle: string): number {
+        const parts = buildingTitle.split("Level");
+        const buildingLevel = parseInt(parts[1].trim());
+        return buildingLevel;
     }
 }
