@@ -67,7 +67,7 @@ async function buildingLoop(
     await client.login(serverUrl, username, password);
     logger.info("Done.");
 
-    let remainingBuildingIds = [...buildingIds].sort((a, b) => a - b);
+    let remainingBuildingIds = [...buildingIds];
 
     // Remove building ids that have already reached or exceeded the target level
     logger.info("Removing already completed buildings from queue...");
@@ -123,14 +123,35 @@ async function buildingLoop(
             }
 
             // Upgrade the building and go to the next id.
-            await client.upgradeBuilding(villageId, buildingId);
+            const upgradeResult = await client.upgradeBuilding(
+                villageId,
+                buildingId
+            );
 
-            // If this was the upgrade from level x to the target level,
-            // we need to also remove it from the remaining building ids.
-            if (buildingData.level + 1 >= targetLevel) {
-                remainingBuildingIds = remainingBuildingIds.filter(
-                    (x) => x !== buildingId
-                );
+            if (upgradeResult.success) {
+                // If this was the upgrade from target level  - 1 to the target level,
+                // we need to also remove it from the remaining building ids.
+                if (buildingData.level + 1 === targetLevel) {
+                    remainingBuildingIds = remainingBuildingIds.filter(
+                        (x) => x !== buildingId
+                    );
+                }
+
+                // We also have to remove it, if this was the upgrade from target level - 2 to the target level,
+                // if the same building is already in the queue.
+                if (buildingData.level + 2 === targetLevel) {
+                    if (
+                        queueData.some(
+                            (x) =>
+                                x.name.toLowerCase() ===
+                                buildingData.name.toLowerCase()
+                        )
+                    ) {
+                        remainingBuildingIds = remainingBuildingIds.filter(
+                            (x) => x !== buildingId
+                        );
+                    }
+                }
             }
             await sleep(1000);
         }
