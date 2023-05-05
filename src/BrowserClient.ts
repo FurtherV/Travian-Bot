@@ -13,6 +13,7 @@ export interface BuildingData {
     name: string;
     level: number;
     upgradable: boolean;
+    underConstruction: boolean;
 }
 
 export interface BuildingQueueItem {
@@ -184,12 +185,17 @@ export class BrowserClient {
             "button[type='button'].textButtonV1.green.build"
         ));
 
+        const underConstruction = !!(await this.page?.$(
+            "div.upgradeHeader.levelSpecificInfo tr.underConstruction"
+        ));
+
         return {
             buildingId: buildingId,
             villageId: villageId,
             name: buildingName,
             level: buildingLevel,
             upgradable: upgradable,
+            underConstruction: underConstruction,
         };
     }
 
