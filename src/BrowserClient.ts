@@ -193,11 +193,11 @@ export class BrowserClient {
         };
     }
 
-    private navigateTo(url: string, maxRetries = 5) {
+    private async navigateTo(url: string, maxRetries = 5) {
         let attempts = 0;
         while (attempts < maxRetries) {
             try {
-                this.page?.goto(url);
+                await this.page?.goto(url);
                 break;
             } catch (error) {
                 attempts++;
