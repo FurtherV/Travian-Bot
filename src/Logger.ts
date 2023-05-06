@@ -1,19 +1,30 @@
 export class Logger {
-    public constructor(private prefix: string = "") {}
+    public constructor(
+        private prefix: string = "",
+        private parentLogger?: Logger
+    ) {}
 
     public info(message?: any, ...optionalParams: any[]) {
-        this.log("[INFO]", this.prefix, message, ...optionalParams);
+        this.log("[INFO]", message, ...optionalParams);
     }
 
     public error(message?: any, ...optionalParams: any[]) {
-        this.log("[ERROR]", this.prefix, message, ...optionalParams);
+        this.log("[ERROR]", message, ...optionalParams);
     }
 
     public warn(message?: any, ...optionalParams: any[]) {
-        this.log("[WARN]", this.prefix, message, ...optionalParams);
+        this.log("[WARN]", message, ...optionalParams);
     }
 
     public log(message?: any, ...optionalParams: any[]) {
-        console.log(message, ...optionalParams);
+        const chainedPrefix = this.getChainedPrefix();
+        console.log(chainedPrefix + message, ...optionalParams);
+    }
+
+    private getChainedPrefix(): string {
+        if (this.parentLogger) {
+            return this.parentLogger.getChainedPrefix() + this.prefix;
+        }
+        return this.prefix;
     }
 }
