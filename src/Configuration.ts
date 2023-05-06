@@ -1,4 +1,5 @@
 import fs from "fs";
+import { deepEqual } from "./Utils";
 
 export interface BuildConfiguration {
     buildingIds: number[];
@@ -69,8 +70,10 @@ export class Configuration {
                 configFile.toString()
             ) as BotConfiguration;
             config = { ...this.DEFAULT_CONFIG, ...parsedConfig };
-            // Update the config file with the merged configuration
-            fs.writeFileSync(path, JSON.stringify(config, null, 4));
+
+            if (!deepEqual(parsedConfig, config)) {
+                fs.writeFileSync(path, JSON.stringify(config, null, 4));
+            }
         } catch (error) {
             if (error instanceof Error) {
                 console.error("Error reading config file:", error.message);
