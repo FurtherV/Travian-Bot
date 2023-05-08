@@ -26,7 +26,7 @@ export class BuildBot extends Bot {
 
         await client.initialize({
             headless: "new",
-            userDataDir: `./tmp/${this.villageId}`,
+            userDataDir: `./tmp/bots/build/${this.villageId}`,
         });
 
         logger.info("Logging in...");

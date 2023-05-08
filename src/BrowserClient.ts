@@ -22,6 +22,11 @@ export interface BuildingQueueItem {
     duration: number;
 }
 
+export type VillageTroops = {
+    villageId: number;
+    troops: Record<string, number>;
+};
+
 export class BrowserClient {
     private browser: Browser | undefined;
     private page: Page | undefined;
@@ -109,55 +114,127 @@ export class BrowserClient {
         };
     }
 
+    public async recruitUnits(
+        villageId: number,
+        unitName: string,
+        unitCount: number
+    ): Promise<boolean> {
+        try {
+            await this.switchToVillage(villageId);
+            // Open barracks interface
+            await this.page?.click(
+                "layoutButton.buttonFramed.withIcon.round.barracks.green."
+            );
+            await this.page?.waitForNavigation();
+        } catch (error) {
+            return false;
+        }
+
+        return true;
+    }
+
     public async getBuildingQueue(
         villageId: number
     ): Promise<BuildingQueueItem[]> {
-        //TODO: Add error checking.
         await this.switchToVillage(villageId);
 
-        try {
-            return (
-                (await this.page?.$eval("div.buildingList>ul", (el) => {
-                    const result: BuildingQueueItem[] = [];
+        const buildingQueue = await this.page?.$eval(
+            "div.buildingList>ul",
+            (el: Element) => {
+                const result: BuildingQueueItem[] = [];
+                const children = el.children;
 
-                    const children = el.children;
-                    for (let i = 0; i < children.length; i++) {
-                        const child = children[i];
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    const divName = child.querySelector("div.name");
+                    const timerBuildDuration = child.querySelector(
+                        "div.buildDuration>span.timer"
+                    );
 
-                        //TODO: Add error checking.
-                        const divName = child.querySelector("div.name");
-                        const timerBuildDuration = child.querySelector(
-                            "div.buildDuration>span.timer"
+                    if (!divName || !timerBuildDuration) {
+                        throw new Error(
+                            `Invalid building queue item at index ${i} in village ${villageId}`
                         );
-
-                        const buildingTitle = divName?.textContent;
-                        if (buildingTitle == null)
-                            throw new Error(
-                                `Could not find title of building in queue at ${villageId}.`
-                            );
-
-                        const buildingName =
-                            this.getBuildingNameFromTitle(buildingTitle);
-                        const buildingLevel =
-                            this.getBuildingLevelFromTitle(buildingTitle);
-
-                        const buildDuration = parseInt(
-                            timerBuildDuration!.getAttribute("value") || ""
-                        );
-
-                        result.push({
-                            name: buildingName,
-                            level: buildingLevel,
-                            duration: buildDuration,
-                        });
                     }
 
-                    return result;
-                })) || []
-            );
-        } catch (error) {
-            return [];
-        }
+                    const buildingTitle = divName.textContent?.trim();
+                    const buildingValue = timerBuildDuration
+                        .getAttribute("value")
+                        ?.trim();
+
+                    if (!buildingTitle || !buildingValue) {
+                        throw new Error(
+                            `Could not find title or value of building in queue at index ${i} in village ${villageId}`
+                        );
+                    }
+
+                    const buildingName =
+                        this.getBuildingNameFromTitle(buildingTitle);
+                    const buildingLevel =
+                        this.getBuildingLevelFromTitle(buildingTitle);
+                    const buildDuration = parseInt(buildingValue);
+
+                    if (
+                        !buildingName ||
+                        isNaN(buildingLevel) ||
+                        isNaN(buildDuration)
+                    ) {
+                        throw new Error(
+                            `Invalid building data at index ${i} in village ${villageId}`
+                        );
+                    }
+
+                    result.push({
+                        name: buildingName,
+                        level: buildingLevel,
+                        duration: buildDuration,
+                    });
+                }
+
+                return result;
+            }
+        );
+
+        return buildingQueue || [];
+    }
+
+    public async getTroops(villageId: number): Promise<VillageTroops> {
+        await this.switchToVillage(villageId);
+
+        const troops: Record<string, number> =
+            (await this.page?.$eval(
+                "div.villageInfobox.units",
+                (el: Element) => {
+                    const tableBody = el.querySelector("table > tbody");
+                    if (!tableBody) throw new Error("Table body not found");
+
+                    const troopData: Record<string, number> = {};
+                    for (const tableRow of tableBody.children) {
+                        const unitNameElement = tableRow.querySelector(".un");
+                        const unitCountElement = tableRow.querySelector(".num");
+
+                        if (!unitNameElement || !unitCountElement) continue;
+
+                        const unitName = unitNameElement.textContent
+                            ?.trim()
+                            .replace(/([^s])s$/, "$1")
+                            .toLowerCase();
+                        const unitCount = parseInt(
+                            unitCountElement.textContent?.trim() || "0"
+                        );
+
+                        if (unitName && !isNaN(unitCount)) {
+                            troopData[unitName] = unitCount;
+                        }
+                    }
+                    return troopData;
+                }
+            )) || {};
+
+        return {
+            villageId: villageId,
+            troops: troops,
+        };
     }
 
     public async getBuildingData(
