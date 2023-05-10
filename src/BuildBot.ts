@@ -85,7 +85,19 @@ export class BuildBot extends Bot {
                     }
 
                     logger.info(`Upgrading building ${buildingData.name}.`);
-                    await client.upgradeBuilding(this.villageId, buildingId);
+                    const upgradeResult = await client.upgradeBuilding(
+                        this.villageId,
+                        buildingId
+                    );
+
+                    if (
+                        upgradeResult.success &&
+                        buildingData.level + 1 >= targetLevel
+                    ) {
+                        remainingBuildingIds = remainingBuildingIds.filter(
+                            (x) => x !== buildingId
+                        );
+                    }
                     await sleep(1000);
                 }
                 await sleep(5000);
